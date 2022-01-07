@@ -26,17 +26,14 @@ def traverse(tree, cb):
 
 def get_errors(code, rule):
     instance = rule()
-    tree = get_ast_obj(code)
     visit = lambda _, __, node: getattr(instance, node['name'], noop)(node)
-    traverse(tree, visit)
+    traverse(get_ast_obj(code), visit)
     return instance.errors
 
 def test_rule(rule):
-    print(f'Testing rule {rule}...')
-    for case in rule.valid:
-        assert get_errors(case, rule) == []
-    for case in rule.invalid:
-        assert get_errors(case, rule)
+    for case, expected in [(k, []) for k in rule.valid] + list(rule.invalid.items()):
+        actual = get_errors(case, rule)
+        assert actual == expected, f'actual != expected: {actual} != {expected}'
 
 if __name__ == '__main__':
     from pprint import pprint

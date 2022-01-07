@@ -1,4 +1,5 @@
-from main import get_ast_obj
+from rules import rule_list
+from main import get_ast_obj, test_rule
 
 tests = [{
     'input': 'a',
@@ -21,9 +22,6 @@ vtests = [{
 
 for test in vtests:
     assert get_ast_obj(test['input'], verbose=True) == test['output'], get_ast_obj(test['input'], verbose=True)
-
-from rules import rule_list
-from main import test_rule
 
 for rule in rule_list:
     test_rule(rule)
