@@ -25,15 +25,20 @@ def traverse(tree, cb):
             [cb(k, o[k], o) if k == 'name' else stack.append(o[k]) for k in o]
 
 def get_errors(code, rule):
-    instance = rule()
+    instance = rule(rule.config)
     visit = lambda _, __, node: getattr(instance, node['name'], noop)(node)
     traverse(get_ast_obj(code), visit)
-    return instance.errors
+    return instance.get_errors()
 
 class rule():
     testing = False
-    def __init__(self):
+    config = {}
+    def __init__(self, config={}):
         self.errors = []
+    def error(self, e):
+        self.errors.append(e)
+    def get_errors(self):
+        return self.errors
 
 def test_rule(rule):
     print(f'Testing rule {rule}...')

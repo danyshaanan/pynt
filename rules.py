@@ -11,7 +11,7 @@ class no_not_not(rule):
     is_not = lambda node: get(node, ['op','name']) == 'Not'
     def UnaryOp(self, node):
         if no_not_not.is_not(node) and no_not_not.is_not(node['operand']):
-            self.errors.append(no_not_not.str)
+            self.error(no_not_not.str)
 
 class space_around_binop(rule):
     str = 'Put spaces around binary operators: use `1 + 2` instead of `1+2`'
@@ -22,7 +22,7 @@ class space_around_binop(rule):
         l = space_around_binop.op_len.get(get(node, ['op', 'name']), 1)
         d = distance_of_nodes(get(node, ['left']), get(node, ['right']))
         if d - l != 2:
-            self.errors.append(space_around_binop.str)
+            self.error(space_around_binop.str)
 
 
 class space_around_boolop(rule):
@@ -36,7 +36,7 @@ class space_around_boolop(rule):
         for i in range(len(args) - 1):
             d = distance_of_nodes(args[i], args[i + 1])
             if d - l != 2:
-                self.errors.append(space_around_boolop.str)
+                self.error(space_around_boolop.str)
 
 class no_abbc(rule):
     str = 'Do not use `a < b and b < c`. Use `a < b < c` instead.'
@@ -50,11 +50,37 @@ class no_abbc(rule):
             if values:
                 for i in range(len(values) - 1):
                     if get(values[i], ['comparators', 0, 'id']) == get(values[i + 1], ['left', 'id']):
-                        self.errors.append(no_abbc.str)
+                        self.error(no_abbc.str)
+
+class no_unused(rule): # TODO: Fix, should look inside context and not in all code
+    str = 'NO UNUSED / NOT DEFINED'
+    valid = ['a = 3\na(a)', 'f = 3\nf(1)']
+    invalid = { 'a = 3': [str], 'print(a)': [str], 'a=3\nf(a)': [str] }
+    config = { 'globals': ['print'] }
+    def __init__(self, config={}):
+        super().__init__()
+        self.assigned = set()
+        self.used = set()
+        self.globals = set(config.get('globals', []))
+    def Assign(self, node):
+        for target in get(node, ['targets']):
+            self.assigned.add(get(target, ['id']))
+    def Expr(self, node):
+        for target in get(node, ['value', 'args']):
+            id = get(target, ['id'])
+            if id:
+                self.used.add(id)
+    def Call(self, node):
+        self.used.add(get(node, ['func', 'id']))
+    # TODO: Add other usages beside Assign and Expr
+    def get_errors(self):
+        return [no_unused.str for _ in (self.assigned - self.used) | (self.used - self.assigned - self.globals)]
+
 
 rule_list = [
     no_not_not,
     space_around_binop,
     space_around_boolop,
     no_abbc,
+    no_unused,
     ]
