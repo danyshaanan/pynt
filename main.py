@@ -50,6 +50,5 @@ def test_rule(rule):
 if __name__ == '__main__':
     from pprint import pprint
     code = 'not not 1j'
-    pprint(get_ast_obj(code, verbose=True))
     pprint(get_ast_obj(code))
 
