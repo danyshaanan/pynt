@@ -1,4 +1,5 @@
 import ast
+from pprint import pprint
 
 # Requires Python 3.9
 # https://docs.python.org/3/library/ast.html
@@ -30,9 +31,11 @@ def get_errors(code, rule):
     return instance.errors
 
 def test_rule(rule):
+    print(f'Testing rule {rule}...')
     for case, expected in [(k, []) for k in rule.valid] + list(rule.invalid.items()):
+        # if rule.testing:
         actual = get_errors(case, rule)
-        assert actual == expected, f'actual != expected: {actual} != {expected}'
+        assert actual == expected, f'(actual != expected): ({actual} != {expected}) for case `{case}`'
 
 if __name__ == '__main__':
     from pprint import pprint

@@ -1,5 +1,6 @@
+from pprint import pprint
 
-get = lambda t, l: get(t.get(l[0], {}), l[1:]) if l else t
+get = lambda t, l: get(t.get(l[0], {}) if type(t) == dict else next(iter(t[l[0]:l[0]+1]), {}), l[1:]) if l else t
 distance_of_nodes = lambda n1, n2: get(n2, ['col_offset']) - get(n1, ['end_col_offset'])
 
 class no_not_not():
@@ -7,6 +8,7 @@ class no_not_not():
     valid = { 'not 1', 'not NOT', 'not False', }
     invalid = { 'not not 1': [str], 'not not not 1': 2 * [str] }
     is_not = lambda node: get(node, ['op','name']) == 'Not'
+    testing = False
     def __init__(self):
         self.errors = []
     def UnaryOp(self, node):
@@ -18,6 +20,7 @@ class space_around_binop():
     valid = [f'x {o} y' for o in '+ - * / // ** << >> | & ^'.split(' ')] + ['asd - sad', 'a * b * c']
     invalid = { '1+2': [str], 'x// y': [str], 'a  * b +  c': 2 * [str] }
     op_len = { 'FloorDiv' : 2, 'Pow' : 2, 'LShift' : 2, 'RShift' : 2, 'MatMult': 2 }
+    testing = False
     def __init__(self):
         self.errors = []
     def BinOp(self, node):
@@ -32,6 +35,7 @@ class space_around_boolop():
     valid = ['a and b', 'a or b', 'a and b or c']
     invalid = { 'a  and  b': [str], 'x  or y': [str], 'a  and b or  c': 2 * [str] }
     op_len = { 'Or': 2, 'And':  3 }
+    testing = False
     def __init__(self):
         self.errors = []
     def BoolOp(self, node):
@@ -42,8 +46,26 @@ class space_around_boolop():
             if d - l != 2:
                 self.errors.append(space_around_boolop.str)
 
+class no_abbc():
+    str = 'Do not use `a < b and b < c`. Use `a < b < c` instead.'
+    valid = ['a < b', 'a < b < c', 'a < b < c < d', 'a < b or b < c']
+    # valid = ['a < b', 'a < b < c', 'a < b < c < d', 'a < b or b < c', 'a < b and b > c']
+    invalid = { 'a < b and b < c': [str], 'a < b and b < c and b < 3': [str] }
+    # invalid = { 'a < b and b < c': [str], 'a < b and b < c and b < 3': [str], 'a < b and c > b': [str] }
+    testing = False
+    def __init__(self):
+        self.errors = []
+    def BoolOp(self, node):
+        if get(node, ['op', 'name']) == 'And':
+            values = get(node, ['values'])
+            if values:
+                for i in range(len(values) - 1):
+                    if get(values[i], ['comparators', 0, 'id']) == get(values[i + 1], ['left', 'id']):
+                        self.errors.append(no_abbc.str)
+
 rule_list = [
     no_not_not,
     space_around_binop,
     space_around_boolop,
+    no_abbc,
     ]
