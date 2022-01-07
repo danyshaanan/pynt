@@ -30,6 +30,11 @@ def get_errors(code, rule):
     traverse(get_ast_obj(code), visit)
     return instance.errors
 
+class rule():
+    testing = False
+    def __init__(self):
+        self.errors = []
+
 def test_rule(rule):
     print(f'Testing rule {rule}...')
     for case, expected in [(k, []) for k in rule.valid] + list(rule.invalid.items()):
