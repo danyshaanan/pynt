@@ -1,0 +1,19 @@
+
+
+## Updates:
+
+* Fix `name` override (which broke `no_unneeded_pass` implementation)
+* Implement parenthood (So that `no_unneeded_pass` could be properly written)
+* Implement multi-visitor (One traversal for many rules)
+* Implement getting errors per file (read file and pass as code)
+* Add line numbers for errors (and printed sorted output)
+* Fix all rules error till it runs on futures
+
+## TODO:
+* feature - include file name in rule logic
+* Error handling (on failing on parsing mainly)
+* Add critical rules:
+    * fix no unused / not assigned
+    * go over pylint list
+    * go over eslint rules
+    * ...
