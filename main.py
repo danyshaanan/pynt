@@ -30,6 +30,9 @@ def get_errors(code, rules):
     traverse(get_ast_obj(code), visit)
     return [instance.get_errors() for instance in instances]
 
+def get_file_errors(path, rules):
+    return get_errors(open(path, 'r').read(), rules)
+
 class rule():
     testing = False
     config = {}
@@ -52,3 +55,4 @@ if __name__ == '__main__':
     code = 'not not 1j'
     pprint(get_ast_obj(code))
 
+    

@@ -1,3 +1,4 @@
+import collections
 from main import rule
 from pprint import pprint
 
@@ -64,14 +65,18 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
         self.globals = set(config.get('globals', []))
     def Assign(self, node):
         for target in get(node, ['targets']):
-            self.assigned.add(get(target, ['id']))
+            assigned = get(target, ['id'])
+            if isinstance(assigned, collections.Hashable):
+                self.assigned.add(assigned)
     def Expr(self, node):
         for target in get(node, ['value', 'args']):
             id = get(target, ['id'])
             if id:
                 self.used.add(id)
     def Call(self, node):
-        self.used.add(get(node, ['func', 'id']))
+        called = get(node, ['func', 'id'])
+        if isinstance(called, collections.Hashable):
+            self.used.add(called)
     # TODO: Add other usages beside Assign and Expr
     def get_errors(self):
         return [no_unused.str for _ in (self.assigned - self.used) | (self.used - self.assigned - self.globals)]
