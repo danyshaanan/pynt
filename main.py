@@ -10,7 +10,7 @@ noop = lambda *a, **k: None
 def get_ast_obj(code):
     def exp(n, parent=None):
         t = type(n)
-        if t in { bool, int, float, str, complex, type(None) }:
+        if t in { bool, int, float, str, complex, type(None), bytes }:
             return n
         if t == list:
             return [exp(i, n) for i in n]
