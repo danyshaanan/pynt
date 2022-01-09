@@ -79,8 +79,13 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
             self.used[called] = node['lineno']
     # TODO: Add other usages beside Assign and Expr
     def get_errors(self):
-        return  [{ 'note': no_unused.str, 'line': l } for v, l in self.assigned.items() if v not in self.used] + \
-                [{ 'note': no_unused.str, 'line': l } for v, l in self.used.items() if not (v in self.assigned or v in self.globals) ]
+        for v, l in self.assigned.items():
+            if v not in self.used:
+                self.error({ 'lineno': l }, no_unused.str)
+        for v, l in self.used.items():
+            if not (v in self.assigned or v in self.globals):
+                self.error({ 'lineno': l }, no_unused.str)
+        return super().get_errors()
 
 class no_unneeded_pass(rule):
     str = 'do not use `pass` if not needed'
