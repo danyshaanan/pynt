@@ -8,18 +8,18 @@ class no_not_not(rule):
     str = 'Cast to boolean with `bool()`, not with `not not`'
     valid = { 'not 1', 'not NOT', 'not False', }
     invalid = { 'not not 1': [str], 'not not not 1': 2 * [str] }
-    is_not = lambda node: get(node, ['op','name']) == 'Not'
+    is_not = lambda node: get(node, ['op','NAME']) == 'Not'
     def UnaryOp(self, node):
         if no_not_not.is_not(node) and no_not_not.is_not(node['operand']):
             self.error(no_not_not.str)
 
 class space_around_binop(rule):
     str = 'Put spaces around binary operators: use `1 + 2` instead of `1+2`'
-    valid = [f'x {o} y' for o in '+ - * / // ** << >> | & ^'.split(' ')] + ['asd - sad', 'a * b * c']
+    valid = [f'x {o} y' for o in '+ - * / // ** << >> | & ^ @='.split(' ')] + ['asd - sad', 'a * b * c']
     invalid = { '1+2': [str], 'x// y': [str], 'a  * b +  c': 2 * [str] }
     op_len = { 'FloorDiv' : 2, 'Pow' : 2, 'LShift' : 2, 'RShift' : 2, 'MatMult': 2 }
     def BinOp(self, node):
-        l = space_around_binop.op_len.get(get(node, ['op', 'name']), 1)
+        l = space_around_binop.op_len.get(get(node, ['op', 'NAME']), 1)
         d = distance_of_nodes(get(node, ['left']), get(node, ['right']))
         if d - l != 2:
             self.error(space_around_binop.str)
@@ -31,7 +31,7 @@ class space_around_boolop(rule):
     invalid = { 'a  and  b': [str], 'x  or y': [str], 'a  and b or  c': 2 * [str] }
     op_len = { 'Or': 2, 'And':  3 }
     def BoolOp(self, node):
-        l = len(get(node, ['op', 'name']))
+        l = len(get(node, ['op', 'NAME']))
         args = get(node, ['values'])
         for i in range(len(args) - 1):
             d = distance_of_nodes(args[i], args[i + 1])
@@ -45,7 +45,7 @@ class no_abbc(rule):
     invalid = { 'a < b and b < c': [str], 'a < b and b < c and b < 3': [str] }
     # invalid = { 'a < b and b < c': [str], 'a < b and b < c and b < 3': [str], 'a < b and c > b': [str] }
     def BoolOp(self, node):
-        if get(node, ['op', 'name']) == 'And':
+        if get(node, ['op', 'NAME']) == 'And':
             values = get(node, ['values'])
             if values:
                 for i in range(len(values) - 1):
@@ -76,6 +76,23 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
     def get_errors(self):
         return [no_unused.str for _ in (self.assigned - self.used) | (self.used - self.assigned - self.globals)]
 
+class no_unneeded_pass(rule):
+    str = 'do not use `pass` if not needed'
+    valid = { 'if 1:\n  pass' }
+    invalid = { f'{c}:\n  3\n  pass': ['do not use `pass` if not needed'] for c in ['if 1', 'def f()', 'while a', 'for i in a'] }
+    def __check(self, node):
+        body = get(node, ['body'])
+        if len(body) >= 2 and get(body[-1], ['NAME']) == 'Pass':
+            self.error(no_unneeded_pass.str)
+    def If(self, node):
+        return self.__check(node)
+    def FunctionDef(self, node):
+        return self.__check(node)
+    def While(self, node):
+        return self.__check(node)
+    def For(self, node):
+        return self.__check(node)
+
 
 rule_list = [
     no_not_not,
@@ -83,4 +100,5 @@ rule_list = [
     space_around_boolop,
     no_abbc,
     no_unused,
+    no_unneeded_pass,
     ]

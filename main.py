@@ -13,7 +13,7 @@ def get_ast_obj(code):
             return n
         if t == list:
             return [exp(i) for i in n]
-        return { 'name': t.__name__, **{ s: exp(getattr(n, s)) for s in n.__dict__.keys() }}
+        return { 'NAME': t.__name__, **{ s: exp(getattr(n, s)) for s in n.__dict__.keys() }}
     return exp(ast.parse(code))
 
 def traverse(tree, cb):
@@ -22,11 +22,11 @@ def traverse(tree, cb):
         i = stack.pop(0)
         if type(i) in { dict, list }:
             o = i if type(i) == dict else dict(enumerate(i))
-            [cb(k, o[k], o) if k == 'name' else stack.append(o[k]) for k in o]
+            [cb(k, o[k], o) if k == 'NAME' else stack.append(o[k]) for k in o]
 
 def get_errors(code, rule):
     instance = rule(rule.config)
-    visit = lambda _, __, node: getattr(instance, node['name'], noop)(node)
+    visit = lambda _, __, node: getattr(instance, node['NAME'], noop)(node)
     traverse(get_ast_obj(code), visit)
     return instance.get_errors()
 
