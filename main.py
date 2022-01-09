@@ -1,5 +1,5 @@
 import ast
-from glob import glob
+from pathlib import Path
 from pprint import pprint
 
 # Requires Python 3.9
@@ -36,7 +36,7 @@ def get_file_errors(path, rules):
 
 def get_path_errors(path, rules):
     res = {}
-    files = glob(f'{path}/*py')
+    files = Path(path).rglob('*.py')
     for file in files:
         errors = get_file_errors(file, rules)
         errors = [item for sublist in errors for item in sublist]
