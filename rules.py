@@ -12,7 +12,7 @@ class no_not_not(rule):
     is_not = lambda node: get(node, ['op','NAME']) == 'Not'
     def UnaryOp(self, node):
         if no_not_not.is_not(node) and no_not_not.is_not(node['operand']):
-            self.error(no_not_not.str)
+            self.error(node, no_not_not.str)
 
 class space_around_binop(rule):
     str = 'Put spaces around binary operators: use `1 + 2` instead of `1+2`'
@@ -23,7 +23,7 @@ class space_around_binop(rule):
         l = space_around_binop.op_len.get(get(node, ['op', 'NAME']), 1)
         d = distance_of_nodes(get(node, ['left']), get(node, ['right']))
         if d - l != 2:
-            self.error(space_around_binop.str)
+            self.error(node, space_around_binop.str)
 
 
 class space_around_boolop(rule):
@@ -37,7 +37,7 @@ class space_around_boolop(rule):
         for i in range(len(args) - 1):
             d = distance_of_nodes(args[i], args[i + 1])
             if d - l != 2:
-                self.error(space_around_boolop.str)
+                self.error(node, space_around_boolop.str)
 
 class no_abbc(rule):
     str = 'Do not use `a < b and b < c`. Use `a < b < c` instead.'
@@ -51,7 +51,7 @@ class no_abbc(rule):
             if values:
                 for i in range(len(values) - 1):
                     if get(values[i], ['comparators', 0, 'id']) == get(values[i + 1], ['left', 'id']):
-                        self.error(no_abbc.str)
+                        self.error(node, no_abbc.str)
 
 class no_unused(rule): # TODO: Fix, should look inside context and not in all code
     str = 'NO UNUSED / NOT DEFINED'
@@ -60,26 +60,27 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
     config = { 'globals': ['print'] }
     def __init__(self, config={}):
         super().__init__()
-        self.assigned = set()
-        self.used = set()
+        self.assigned = {}
+        self.used = {}
         self.globals = set(config.get('globals', []))
     def Assign(self, node):
         for target in get(node, ['targets']):
             assigned = get(target, ['id'])
             if isinstance(assigned, collections.Hashable):
-                self.assigned.add(assigned)
+                self.assigned[assigned] = node['lineno']
     def Expr(self, node):
         for target in get(node, ['value', 'args']):
             id = get(target, ['id'])
             if id:
-                self.used.add(id)
+                self.used[id] = node['lineno']
     def Call(self, node):
         called = get(node, ['func', 'id'])
         if isinstance(called, collections.Hashable):
-            self.used.add(called)
+            self.used[called] = node['lineno']
     # TODO: Add other usages beside Assign and Expr
     def get_errors(self):
-        return [no_unused.str for _ in (self.assigned - self.used) | (self.used - self.assigned - self.globals)]
+        return  [{ 'note': no_unused.str, 'line': l } for v, l in self.assigned.items() if v not in self.used] + \
+                [{ 'note': no_unused.str, 'line': l } for v, l in self.used.items() if not (v in self.assigned or v in self.globals) ]
 
 class no_unneeded_pass(rule):
     str = 'do not use `pass` if not needed'
@@ -88,7 +89,7 @@ class no_unneeded_pass(rule):
     def Pass(self, node):
         body = get(node, ['parent'])
         if len(body) >= 2 and body[-1] == node['object']:
-            self.error(no_unneeded_pass.str)
+            self.error(node, no_unneeded_pass.str)
 
 rule_list = [
     no_not_not,

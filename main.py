@@ -1,4 +1,5 @@
 import ast
+from glob import glob
 from pprint import pprint
 
 # Requires Python 3.9
@@ -33,13 +34,23 @@ def get_errors(code, rules):
 def get_file_errors(path, rules):
     return get_errors(open(path, 'r').read(), rules)
 
+def get_path_errors(path, rules):
+    res = {}
+    files = glob(f'{path}/*py')
+    for file in files:
+        errors = get_file_errors(file, rules)
+        errors = [item for sublist in errors for item in sublist]
+        errors = sorted(errors, key = lambda e: e['line'])
+        res[file] = errors
+    return res
+
 class rule():
     testing = False
     config = {}
     def __init__(self, config={}):
         self.errors = []
-    def error(self, e):
-        self.errors.append(e)
+    def error(self, node, note):
+        self.errors.append({ 'note': note, 'line': node['lineno'] })
     def get_errors(self):
         return self.errors
 
@@ -47,7 +58,7 @@ def test_rule(rule):
     print(f'Testing rule {rule}...')
     for case, expected in [(k, []) for k in rule.valid] + list(rule.invalid.items()):
         # if rule.testing:
-        actual = get_errors(case, [rule])[0]
+        actual = [e['note'] for e in get_errors(case, [rule])[0]]
         assert actual == expected, f'(actual != expected): ({actual} != {expected}) for case `{case}`'
 
 if __name__ == '__main__':
