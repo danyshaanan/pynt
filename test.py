@@ -4,6 +4,8 @@ from main import test_rule, get_errors, get_path_errors
 
 ############
 
+# path = '/Users/dany/.gh/efrontier-io/defi'
+# path = '/Users/dany/.gh/efrontier-io/Futures'
 path = '.'
 rules = [r for r in rule_list if r.__name__ != 'no_unused']
 
