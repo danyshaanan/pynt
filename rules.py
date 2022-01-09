@@ -79,20 +79,11 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
 class no_unneeded_pass(rule):
     str = 'do not use `pass` if not needed'
     valid = { 'if 1:\n  pass' }
-    invalid = { f'{c}:\n  3\n  pass': ['do not use `pass` if not needed'] for c in ['if 1', 'def f()', 'while a', 'for i in a'] }
-    def __check(self, node):
-        body = get(node, ['body'])
-        if len(body) >= 2 and get(body[-1], ['NAME']) == 'Pass':
+    invalid = { f'{c}:\n  3\n  pass': ['do not use `pass` if not needed'] for c in ['if 1', 'def f()', 'while a', 'for i in a', 'with a'] }
+    def Pass(self, node):
+        body = get(node, ['parent'])
+        if len(body) >= 2 and body[-1] == node['object']:
             self.error(no_unneeded_pass.str)
-    def If(self, node):
-        return self.__check(node)
-    def FunctionDef(self, node):
-        return self.__check(node)
-    def While(self, node):
-        return self.__check(node)
-    def For(self, node):
-        return self.__check(node)
-
 
 rule_list = [
     no_not_not,

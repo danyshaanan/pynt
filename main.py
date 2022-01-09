@@ -7,13 +7,13 @@ from pprint import pprint
 noop = lambda *a, **k: None
 
 def get_ast_obj(code):
-    def exp(n):
+    def exp(n, parent=None):
         t = type(n)
         if t in { bool, int, float, str, complex, type(None) }:
             return n
         if t == list:
-            return [exp(i) for i in n]
-        return { 'NAME': t.__name__, **{ s: exp(getattr(n, s)) for s in n.__dict__.keys() }}
+            return [exp(i, n) for i in n]
+        return { 'NAME': t.__name__, 'object': n, 'parent': parent, **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
     return exp(ast.parse(code))
 
 def traverse(tree, cb):
