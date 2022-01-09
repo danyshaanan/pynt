@@ -24,11 +24,11 @@ def traverse(tree, cb):
             o = i if type(i) == dict else dict(enumerate(i))
             [cb(k, o[k], o) if k == 'NAME' else stack.append(o[k]) for k in o]
 
-def get_errors(code, rule):
-    instance = rule(rule.config)
-    visit = lambda _, __, node: getattr(instance, node['NAME'], noop)(node)
+def get_errors(code, rules):
+    instances = [rule(rule.config) for rule in rules]
+    visit = lambda _, __, node: [getattr(instance, node['NAME'], noop)(node) for instance in instances]
     traverse(get_ast_obj(code), visit)
-    return instance.get_errors()
+    return [instance.get_errors() for instance in instances]
 
 class rule():
     testing = False
@@ -44,7 +44,7 @@ def test_rule(rule):
     print(f'Testing rule {rule}...')
     for case, expected in [(k, []) for k in rule.valid] + list(rule.invalid.items()):
         # if rule.testing:
-        actual = get_errors(case, rule)
+        actual = get_errors(case, [rule])[0]
         assert actual == expected, f'(actual != expected): ({actual} != {expected}) for case `{case}`'
 
 if __name__ == '__main__':
