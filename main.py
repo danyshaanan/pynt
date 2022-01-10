@@ -23,11 +23,11 @@ def traverse(tree, cb):
         i = stack.pop(0)
         if type(i) in { dict, list }:
             o = i if type(i) == dict else dict(enumerate(i))
-            [cb(k, o[k], o) if k == 'NAME' else stack.append(o[k]) for k in o]
+            [cb(o) if k == 'NAME' else stack.append(o[k]) for k in o]
 
 def get_code_errors(code, rules):
-    instances = [rule(rule.config) for rule in rules]
-    visit = lambda _, __, node: [getattr(instance, node['NAME'], noop)(node) for instance in instances]
+    instances = [rule(code, rule.config) for rule in rules]
+    visit = lambda node: [getattr(instance, node['NAME'], noop)(node) for instance in instances]
     traverse(get_ast_obj(code), visit)
     return [instance.get_errors() for instance in instances]
 
@@ -47,16 +47,23 @@ def get_path_errors(path, rules):
 def print_errors(errors):
     for k, v in errors.items():
         print(f'\n{k}')
-        print('\n'.join([f"{str(e['line']).ljust(4)}: {e['note']}" for e in v]) if v else 'No errors!')
+        print('\n'.join([f"{str(e['line']).ljust(4)}: {e['note'].ljust(25)} : {e['snippet'].strip()}" for e in v]) if v else 'No errors!')
     print()
 
 class rule():
     testing = False
     config = {}
-    def __init__(self, config={}):
+    def __init__(self, code, config={}):
+        self.code = code
         self.errors = []
-    def error(self, node, note):
-        self.errors.append({ 'note': note, 'line': node['lineno'] })
+    def get_snippet(self, node):
+        line_start, line_end = node['lineno'], node['end_lineno']
+        col_start, col_end = node['col_offset'], node['end_col_offset']
+        if line_start != line_end:
+            return 'MULTI_LINE'
+        return self.code.split('\n')[line_start - 1][col_start:col_end]
+    def error(self, node):
+        self.errors.append({ 'note': self.name, 'line': node['lineno'], 'snippet': self.get_snippet(node) })
     def get_errors(self):
         return self.errors
 
@@ -66,6 +73,16 @@ def test_rule(rule):
         # if rule.testing:
         actual = [e['note'] for e in get_code_errors(case, [rule])[0]]
         assert actual == expected, f'(actual != expected): ({actual} != {expected}) for case `{case}`'
+
+    # for case, expected in [(k, []) for k in rule.valid]:
+    #     # if rule.testing:
+    #     actual = [e['note'] for e in get_code_errors(case, [rule])[0]]
+    #     assert actual == expected, f'(actual != expected): ({actual} != {expected}) for case `{case}`'
+
+    # for case, expected in list(rule.invalid.items()):
+    #     # if rule.testing:
+    #     actual = [e['note'] for e in get_code_errors(case, [rule])[0]]
+    #     assert actual == expected, f'(actual != expected): ({actual} != {expected}) for case `{case}`'
 
 if __name__ == '__main__':
     from pprint import pprint

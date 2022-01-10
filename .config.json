@@ -1,0 +1,13 @@
+{
+    "plugins": {
+        "extra": "extra_rules.py"
+    },
+    "rules": {
+        "no_not_not": 2,
+        "space_around_binop": 2,
+        "space_around_boolop": 2,
+        "no_abbc": 2,
+        "no_unused": 2,
+        "no_unneeded_pass": 2
+    }
+}

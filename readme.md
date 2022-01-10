@@ -10,6 +10,7 @@
 * Fix all rules error till it runs on futures
 
 ## TODO:
+* Add violating code snippet to error
 * feature - include file name in rule logic - reconsider, might complicate lots of things
 * Error handling (on failing on parsing mainly)
 * Implement configurations

@@ -23,4 +23,3 @@ if not not (1 < 2 and  2 < a):
 '''
 
 assert len(get_code_errors(sample, rule_list)) == len(rule_list)
-
