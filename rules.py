@@ -53,11 +53,7 @@ class no_abbc(rule):
                     if get(values[i], ['comparators', 0, 'id']) == get(values[i + 1], ['left', 'id']):
                         self.error(node, no_abbc.str)
 
-class no_unused(rule): # TODO: Fix, should look inside context and not in all code
-    str = 'NO UNUSED / NOT DEFINED'
-    valid = ['a = 3\na(a)', 'f = 3\nf(1)']
-    invalid = { 'a = 3': [str], 'print(a)': [str], 'a=3\nf(a)': [str] }
-    config = { 'globals': ['print'] }
+class no_unused_no_undefined(rule): # TODO: Fix, should look inside context and not in all code
     def __init__(self, config={}):
         super().__init__()
         self.assigned = {}
@@ -68,6 +64,9 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
             assigned = get(target, ['id'])
             if isinstance(assigned, collections.Hashable):
                 self.assigned[assigned] = node['lineno']
+    def FunctionDef(self, node):
+        assigned = get(node, ['name'])
+        self.assigned[assigned] = node['lineno']
     def Expr(self, node):
         for target in get(node, ['value', 'args']):
             id = get(target, ['id'])
@@ -78,13 +77,26 @@ class no_unused(rule): # TODO: Fix, should look inside context and not in all co
         if isinstance(called, collections.Hashable):
             self.used[called] = node['lineno']
     # TODO: Add other usages beside Assign and Expr
+
+class no_unused(no_unused_no_undefined):
+    str = 'NO UNUSED'
+    valid = ['a = 3\nprint(a)', 'def f():f()']
+    invalid = { 'a = 3': [str], 'def f():pass': [str] }
     def get_errors(self):
         for v, l in self.assigned.items():
             if v not in self.used:
                 self.error({ 'lineno': l }, no_unused.str)
+        return super().get_errors()
+
+class no_undefined(no_unused_no_undefined):
+    str = 'NOT DEFINED'
+    valid = ['a = 3\nprint(a)', 'def f():f()']
+    invalid = { 'print(a)': [str], 'f(1)': [str] }
+    config = { 'globals': ['print', 'getattr', 'enumerate', 'type', 'dict', 'open'] }
+    def get_errors(self):
         for v, l in self.used.items():
             if not (v in self.assigned or v in self.globals):
-                self.error({ 'lineno': l }, no_unused.str)
+                self.error({ 'lineno': l }, no_undefined.str)
         return super().get_errors()
 
 class no_unneeded_pass(rule):
@@ -102,5 +114,6 @@ rule_list = [
     space_around_boolop,
     no_abbc,
     no_unused,
+    no_undefined,
     no_unneeded_pass,
     ]

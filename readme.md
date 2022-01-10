@@ -10,8 +10,9 @@
 * Fix all rules error till it runs on futures
 
 ## TODO:
-* feature - include file name in rule logic
+* feature - include file name in rule logic - reconsider, might complicate lots of things
 * Error handling (on failing on parsing mainly)
+* Implement configurations
 * Add critical rules:
     * fix no unused / not assigned
     * go over pylint list
