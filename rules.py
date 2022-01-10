@@ -137,6 +137,22 @@ class no_unneeded_pass(rule):
         if len(body) >= 2 and body[-1] == node['object']:
             self.error(node)
 
+class rule_to_test_exit_node(rule):
+    # let's do: no pass inside if
+    name = 'TEST_EXIT'
+    valid = { 'if 1: 3\nwhile 1:pass' }
+    invalid = { 'if 1: pass\nwhile1: 3': [name] }
+    def __init__(self, code, config={}):
+        self.if_counter = 0
+        super().__init__(code, config)
+    def If(self, node):
+        self.if_counter += 1
+    def If_out(self, node):
+        self.if_counter -= 1
+    def Pass(self, node):
+        if self.if_counter:
+            self.error(node)
+
 rule_list = [
     no_not_not,
     space_around_binop,
@@ -145,4 +161,5 @@ rule_list = [
     # no_unused,
     # no_undefined,
     no_unneeded_pass,
+    rule_to_test_exit_node,
     ]

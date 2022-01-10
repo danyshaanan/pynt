@@ -6,6 +6,7 @@ from pprint import pprint
 # https://docs.python.org/3/library/ast.html
 
 noop = lambda *a, **k: None
+listify = lambda node: node.values() if type(node) == dict else node
 
 def get_ast_obj(code):
     def exp(n, parent=None):
@@ -17,19 +18,16 @@ def get_ast_obj(code):
         return { 'NAME': t.__name__, 'object': n, 'parent': parent, **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
     return exp(ast.parse(code))
 
-def traverse(node, cb):
-    if type(node) in { dict, list }:
-        o = node if type(node) == dict else dict(enumerate(node))
-        for k in o:
-            if k == 'NAME':
-                cb(o)
-            else:
-                traverse(o[k], cb)
+def traverse(node, cb_in, cb_out):
+    if type(node) in { list, dict }:
+        cb_in(node)
+        [traverse(v, cb_in, cb_out) for v in listify(node)]
+        cb_out(node)
 
 def get_code_errors(code, rules):
     instances = [rule(code, rule.config) for rule in rules]
-    visit = lambda node: [getattr(instance, node['NAME'], noop)(node) for instance in instances]
-    traverse(get_ast_obj(code), visit)
+    visitor = lambda suffix: lambda node: [getattr(instance, node['NAME'] + suffix, noop)(node) for instance in instances] if 'NAME' in node else 0
+    traverse(get_ast_obj(code), visitor(''), visitor('_out'))
     return [instance.get_errors() for instance in instances]
 
 def get_file_errors(path, rules):
