@@ -17,13 +17,14 @@ def get_ast_obj(code):
         return { 'NAME': t.__name__, 'object': n, 'parent': parent, **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
     return exp(ast.parse(code))
 
-def traverse(tree, cb):
-    stack = [tree]
-    while stack:
-        i = stack.pop(0)
-        if type(i) in { dict, list }:
-            o = i if type(i) == dict else dict(enumerate(i))
-            [cb(o) if k == 'NAME' else stack.append(o[k]) for k in o]
+def traverse(node, cb):
+    if type(node) in { dict, list }:
+        o = node if type(node) == dict else dict(enumerate(node))
+        for k in o:
+            if k == 'NAME':
+                cb(o)
+            else:
+                traverse(o[k], cb)
 
 def get_code_errors(code, rules):
     instances = [rule(code, rule.config) for rule in rules]
