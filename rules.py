@@ -4,7 +4,7 @@ import collections
 from main import rule
 from pprint import pprint
 
-get = lambda t, l: get(t.get(l[0], {}) if type(t) == dict else next(iter(t[l[0]:l[0]+1]), {}), l[1:]) if l else t
+get = lambda t, l: get(t.get(l[0], {}) if type(t) == dict else next(iter(t[l[0]:l[0] + 1]), {}), l[1:]) if l else t
 distance_of_nodes = lambda n1, n2: get(n2, ['col_offset']) - get(n1, ['end_col_offset'])
 
 class no_not_not(rule):
@@ -46,23 +46,15 @@ class space_around_boolop(rule):
 
 class no_abbc(rule):
     name = 'NO_ABBC'
-    valid = ['a < b', 'a < b < c', 'a < b < c < d', 'a < b or b < c']
-    # valid = ['a < b', 'a < b < c', 'a < b < c < d', 'a < b or b < c', 'a < b and b > c']
-    invalid = { 'a < b and b < c': [name], 'a < b and b < c and b < 3': [name] }
-    # invalid = { 'a < b and b < c': [str], 'a < b and b < c and b < 3': [str], 'a < b and c > b': [str] }
-    def __init__(self, code, config={}):
-        # self.str = 'ASDASDASDAS'
-        # self.hint = 'Do not use `a < b and b < c`. Use `a < b < c` instead.'
-        # self.valid = ['a < b', 'a < b < c', 'a < b < c < d', 'a < b or b < c']
-        # self.invliad = { 'a < b and b < c': [self.str], 'a < b and b < c and b < 3': [self.str] }
-        super().__init__(code, config)
+    valid = ['a < b', 'a < b < c', 'a < b < c < d', 'a < b or b < c', 'f(node) and f(node)']
+    invalid = { 'a < b and b < c': [name], 'a < b and b < c and b < 3': [name], 'b >= a and b < c': [name], 'a < b and c > b': [name], 'a < b and x < y and b < c': [name] }
     def BoolOp(self, node):
         if get(node, ['op', 'NAME']) == 'And':
-            values = get(node, ['values'])
-            if values:
-                for i in range(len(values) - 1):
-                    if get(values[i], ['comparators', 0, 'id']) == get(values[i + 1], ['left', 'id']):
-                        self.error(node)
+            values = [v for v in get(node, ['values']) if get(v, ['ops', 0, 'NAME']) in ['Lt', 'LtE', 'Gt', 'GtE']]
+            pairs = [list((list if get(v, ['ops', 0, 'NAME']).startswith('L') else reversed)([get(v, ['left', 'id']), get(v, ['comparators', 0, 'id'])])) for v in values]
+            side = lambda n: { pair[n] for pair in pairs if type(pair[n]) == str }
+            if side(0).intersection(side(1)):
+                self.error(node)
 
 class no_unused_no_undefined(rule): # TODO: Fix, should look inside context and not in all code
     def __init__(self, code, config={}):
@@ -84,14 +76,12 @@ class no_unused_no_undefined(rule): # TODO: Fix, should look inside context and 
     def ImportFrom(self, node):
         for n in get(node, ['names']):
             self.assigned[n['name']] = node
-    def _For_Cmprehension(self, node):
+    def _For_Comprehension(self, node):
         assigned = get(node, ['target', 'id'])
         if isinstance(assigned, collections.Hashable):
             self.assigned[assigned] = node
-    def For(self, node):
-        return self._For_Cmprehension(node)
-    def comprehension(self, node):
-        return self._For_Cmprehension(node)
+    For = _For_Comprehension
+    comprehension = _For_Comprehension
     ###
     def Expr(self, node):
         for target in get(node, ['value', 'args']):
@@ -153,6 +143,105 @@ class rule_to_test_exit_node(rule):
         if self.if_counter:
             self.error(node)
 
+class duplicate_key(rule):
+    name = 'DUPLICATE_KEY'
+    valid = { '{"a":1,"b":2}', '{"a":1,"b":2,a:3}' }
+    invalid = { '{"a":1,"b":2,"a":3}': [name] }
+    def Dict(self, node):
+        keys = [k['value'] for k in get(node, ['keys']) if k and k['NAME'] == 'Constant']
+        if len(keys) != len(set(keys)):
+            self.error(node)
+
+class unreachable_code(rule):
+    name = 'UNREACHABLE_CODE'
+    valid = { 'if 1:\n  f()\n  return\ng()', 'if 1:\n  f()\n  raise\ng()' }
+    invalid = { 'if 1:\n  f()\n  return\n  g()': [name], 'if 1:\n  raise\n  f()': [name] }
+    def _last_statement(self, node):
+        if node['parent'][-1] != node['object']:
+            self.error(node)
+    Return = _last_statement
+    Raise = _last_statement
+
+class _no_else_after_final_statement(rule):
+    def If(self, node):
+        if get(node, ['body'])[-1]['NAME'] == self.statement and 'orelse' in node and node['orelse']:
+            self.error(node)
+
+class no_else_after_return(_no_else_after_final_statement):
+    name = 'NO_ELSE_AFTER_RETURN'
+    valid = { 'if 1:\n  f()\nelse:\n  return', 'if a: return\nif b: return' }
+    invalid = { 'if 1:\n  return\nelse:\n  pass': [name], 'if 1:\n  return\nelif 2:\n  return\nelse:\n  pass': 2 * [name] }
+    def __init__(self, code, config={}):
+        self.statement = 'Return'
+        super().__init__(code, config)
+
+class no_else_after_raise(_no_else_after_final_statement):
+    name = 'NO_ELSE_AFTER_RAISE'
+    valid = { 'if 1:\n  f()\nelse:\n  raise' }
+    invalid = { 'if 1:\n  raise\nelse:\n  pass': [name], 'if 1:\n  raise\nelif 2:\n  raise\nelse:\n  pass': 2 * [name] }
+    def __init__(self, code, config={}):
+        self.statement = 'Raise'
+        super().__init__(code, config)
+
+class no_import_wildcard(rule):
+    name = 'NO_IMPORT_WILDCARD'
+    valid = { 'import a', 'from a import b', 'from a import a, b, c, d' }
+    invalid = { 'from a import *': [name] }
+    def ImportFrom(self, node):
+        if any(n['name'] == '*' for n in get(node, ['names'])):
+            self.error(node)
+
+# class prefer_dict_comp(rule):
+#     name = 'PREFER_DICT_COMP'
+#     valid = { '[a for a in b]' }
+#     invalid = { 'dict([(k, k) for k in a])': [name] }
+
+class no_inconsistent_return(rule):
+    name = 'NO_INCONSISTENT_RETURN'
+    valid = { 'def f():\n  if 1: return 1\n  return 2', 'def f():\n  def g(): return\n  return 2' }
+    invalid = { 'def f():\n  if 1:\n    return 1\n  return': [name], 'def f():\n  if 1: return 1\n  def g(): pass\n  return': [name], 'def f(a):\n  if a:\n    return\n  return True\n': [name] }
+    def __init__(self, code, config={}):
+        self.func_stack = []
+        self.returns = { True: [], False: [] }
+        super().__init__(code, config)
+    def FunctionDef(self, node):
+            self.func_stack.append(node)
+    def FunctionDef_out(self, node):
+            del node
+            self.func_stack.pop()
+    def Return(self, node):
+        func = self.func_stack[-1]
+        returns = bool(node['value'])
+        if func in self.returns[not returns]:
+            self.error(func)
+        self.returns[returns].append(func)
+
+class inconsistent_quotes(rule):
+    name = 'INCONSISTENT_QUOTES'
+    valid = { '\"a\"', '\'a\'', '\'\'\nf\"\"', 'f\'\'\n\"\"', 'f\'\'\nf\"\"', '""\nf"{\'\'}"' }
+    invalid = { '\'a\'\n\"b\"': [name] }
+    def __init__(self, code, config={}):
+        self.quotes = set()
+        self.on = True
+        super().__init__(code, config)
+    def JoinedStr(self, node):
+        del node
+        self.on = False
+    def JoinedStr_out(self, node):
+        del node
+        self.on = True
+    def Constant(self, node):
+        if self.on and type(node['value']) == str:
+            snippet = self.get_snippet(node)
+            quotes = snippet[0]
+            if quotes in '"\'':
+                self.quotes.add(quotes)
+                if len(self.quotes) > 1:
+                    self.error(node)
+
+
+################################################################################################
+
 rule_list = [
     no_not_not,
     space_around_binop,
@@ -162,4 +251,11 @@ rule_list = [
     # no_undefined,
     no_unneeded_pass,
     rule_to_test_exit_node,
+    duplicate_key,
+    unreachable_code,
+    no_else_after_return,
+    no_else_after_raise,
+    no_import_wildcard,
+    no_inconsistent_return,
+    inconsistent_quotes,
     ]

@@ -1,12 +1,18 @@
 import ast
 from pathlib import Path
 from pprint import pprint
+from io import BytesIO
+from tokenize import tokenize, COMMENT
 
 # Requires Python 3.9
 # https://docs.python.org/3/library/ast.html
+# https://docs.python.org/3/library/tokenize.html
 
 noop = lambda *a, **k: None
 listify = lambda node: node.values() if type(node) == dict else node
+
+get_code_comments = lambda s: { t.start[0]: t.string for t in tokenize(BytesIO(s.encode('utf-8')).readline) if t.type == COMMENT }
+get_file_comments = lambda path: get_code_comments(open(path, 'r').read())
 
 def get_ast_obj(code):
     def exp(n, parent=None):
@@ -16,7 +22,7 @@ def get_ast_obj(code):
         if t == list:
             return [exp(i, n) for i in n]
         return { 'NAME': t.__name__, 'object': n, 'parent': parent, **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
-    return exp(ast.parse(code))
+    return exp(ast.parse(code, type_comments=True))
 
 def traverse(node, cb_in, cb_out):
     if type(node) in { list, dict }:
@@ -87,5 +93,6 @@ if __name__ == '__main__':
     from pprint import pprint
     code = 'not not 1j'
     pprint(get_ast_obj(code))
+
 
     
