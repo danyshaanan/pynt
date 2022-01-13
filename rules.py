@@ -21,14 +21,18 @@ class space_around_binop(rule):
     name = 'SPACE_AROUND_BINOP'
     str = 'Put spaces around binary operators: use `1 + 2` instead of `1+2`'
     valid = [f'x {o} y' for o in '+ - * / // ** << >> | & ^ @='.split(' ')] + ['asd - sad', 'a * b * c']
-    invalid = { '1+2': [name], 'x// y': [name], 'a  * b +  c': 2 * [name] } # , 'a+  b': [str]
+    invalid = { '1+2': [name], 'x// y': [name], 'a  * b +  c': 2 * [name], 'a+  b': [name], 'a  >>b': [name] }
     op_len = { 'FloorDiv' : 2, 'Pow' : 2, 'LShift' : 2, 'RShift' : 2, 'MatMult': 2 }
     def BinOp(self, node):
         l = space_around_binop.op_len.get(get(node, ['op', 'NAME']), 1)
-        d = distance_of_nodes(get(node, ['left']), get(node, ['right']))
+        left, right = get(node, ['left']), get(node, ['right'])
+        d = distance_of_nodes(left, right)
         if d - l != 2:
             self.error(node)
-
+        else:
+            node_snip = self.get_snippet(node)
+            if node_snip[len(self.get_snippet(left))] != ' ' or node_snip[-1-len(self.get_snippet(right))] != ' ':
+                self.error(node)
 
 class space_around_boolop(rule):
     name = 'SPACE_AROUND_BOOLOP'
