@@ -1,5 +1,5 @@
+import re
 import builtins
-
 import collections
 from main import rule
 from pprint import pprint
@@ -175,6 +175,7 @@ class no_else_after_return(_no_else_after_final_statement):
     name = 'NO_ELSE_AFTER_RETURN'
     valid = { 'if 1:\n  f()\nelse:\n  return', 'if a: return\nif b: return' }
     invalid = { 'if 1:\n  return\nelse:\n  pass': [name], 'if 1:\n  return\nelif 2:\n  return\nelse:\n  pass': 2 * [name] }
+    # @super_end
     def __init__(self, code, config={}):
         self.statement = 'Return'
         super().__init__(code, config)
@@ -243,6 +244,16 @@ class inconsistent_quotes(rule):
                 if len(self.quotes) > 1:
                     self.error(node)
 
+class proper_names(rule):
+    name = 'proper_names'
+    valid = { 'asd_asd = 3' }
+    invalid = { 'ASD = 3': [name] }
+    def Assign(self, node):
+        for target in get(node, ['targets']):
+            id = get(target, ['id'])
+            if type(id) == str:
+                if not re.match(r'[a-z][a-z0-9_]', id):
+                    self.error(node)
 
 ################################################################################################
 
@@ -262,4 +273,5 @@ rule_list = [
     no_import_wildcard,
     no_inconsistent_return,
     inconsistent_quotes,
+    proper_names,
     ]

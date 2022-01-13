@@ -44,3 +44,4 @@ def no_inconsistent_return(a):
 
 
 b = "123"
+C = 'asd'

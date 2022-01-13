@@ -16,12 +16,19 @@ get_file_comments = lambda path: get_code_comments(open(path, 'r').read())
 
 def get_ast_obj(code):
     def exp(n, parent=None):
+        # node.__class__.__module__ == ast.__name__:
         t = type(n)
         if t in { bool, int, float, str, complex, type(None), bytes }:
             return n
         if t == list:
             return [exp(i, n) for i in n]
-        return { 'NAME': t.__name__, 'object': n, 'parent': parent, 'snippet': get_snippet_from_ast(code, n), **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
+        return {
+            'NAME': t.__name__, 
+            'object': n,
+            'parent': parent,
+            'snippet': get_snippet_from_ast(code, n),
+            **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }
+        }
     return exp(ast.parse(code, type_comments=True))
 
 def traverse(node, cb_in, cb_out):
@@ -98,6 +105,7 @@ def test_rule(rule):
 if __name__ == '__main__':
     from pprint import pprint
     code = 'not not 1j'
+    pprint(ast.parse(code))
     pprint(get_ast_obj(code))
 
     # traverse(get_ast_obj(code), lambda node: pprint(get_snippet(code, node) if 'lineno' in node else node), noop)
