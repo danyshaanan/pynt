@@ -21,7 +21,7 @@ def get_ast_obj(code):
             return n
         if t == list:
             return [exp(i, n) for i in n]
-        return { 'NAME': t.__name__, 'object': n, 'parent': parent, **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
+        return { 'NAME': t.__name__, 'object': n, 'parent': parent, 'snippet': get_snippet_from_ast(code, n), **{ s: exp(getattr(n, s), n) for s in n.__dict__.keys() }}
     return exp(ast.parse(code, type_comments=True))
 
 def traverse(node, cb_in, cb_out):
@@ -50,10 +50,20 @@ def get_path_errors(path, rules):
     return res
 
 def print_errors(errors):
+    # snip = lambda s: f'MULTILINE:\n{s}' if '\n' in s else s
+    snip = lambda s: s.replace('\n', '\\n')
     for k, v in errors.items():
         print(f'\n{k}')
-        print('\n'.join([f"{str(e['line']).ljust(4)}: {e['note'].ljust(25)} : {e['snippet'].strip()}" for e in v]) if v else 'No errors!')
+        print('\n'.join([f"{str(e['line']).ljust(4)}: {e['note'].ljust(25)} : {snip(e['snippet'])}" for e in v]) if v else 'No errors!')
     print()
+
+def get_snippet_from_ast(code, node):
+    if not hasattr(node, 'lineno'):
+        return None
+    lines = code.split('\n')
+    if node.lineno != node.end_lineno:
+        return '\n'.join(lines[node.lineno - 1:node.end_lineno])
+    return lines[node.lineno - 1][node.col_offset:node.end_col_offset]
 
 class rule():
     testing = False
@@ -62,11 +72,7 @@ class rule():
         self.code = code
         self.errors = []
     def get_snippet(self, node):
-        line_start, line_end = node['lineno'], node['end_lineno']
-        col_start, col_end = node['col_offset'], node['end_col_offset']
-        if line_start != line_end:
-            return 'MULTI_LINE'
-        return self.code.split('\n')[line_start - 1][col_start:col_end]
+        return node['snippet']
     def error(self, node):
         self.errors.append({ 'note': self.name, 'line': node['lineno'], 'snippet': self.get_snippet(node) })
     def get_errors(self):
@@ -94,5 +100,6 @@ if __name__ == '__main__':
     code = 'not not 1j'
     pprint(get_ast_obj(code))
 
+    # traverse(get_ast_obj(code), lambda node: pprint(get_snippet(code, node) if 'lineno' in node else node), noop)
 
     
