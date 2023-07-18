@@ -1,4 +1,9 @@
 
+# Pynt
+
+A POC for a Python linter, inspired by ESLint.
+
+
 ## TODO:
 * Proper scope handling
 * Implement configurations
